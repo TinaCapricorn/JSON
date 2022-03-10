@@ -19,5 +19,12 @@ public class RegistrationInfo {
                     faker.bool().bool() ? "active" : "blocked"
             );
         }
+        public static RegistrationData generateInfo (String login, String password, boolean isActive){
+            return new RegistrationData(
+                    login,
+                    password,
+                    isActive ? "active" : "blocked"
+            );
+        }
     }
 }

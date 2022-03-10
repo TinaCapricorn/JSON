@@ -22,7 +22,6 @@ import static io.restassured.RestAssured.given;
 
 public class AuthTest {
 
-    RegistrationData registrationData;
 
     private static RequestSpecification requestSpec = new RequestSpecBuilder()
             .setBaseUri("http://localhost")
@@ -32,10 +31,9 @@ public class AuthTest {
             .log(LogDetail.ALL)
             .build();
 
-    private void setUpAll() {
-        this.registrationData = RegistrationInfo.Registration.generateInfo("en");
+    private void registrateUser(RegistrationData registrationData) {
         Gson gson = new Gson();
-        String jsonData = gson.toJson(this.registrationData);
+        String jsonData = gson.toJson(registrationData);
         given() // "дано"
                 .spec(requestSpec) // указываем, какую спецификацию используем
                 .body(jsonData) // передаём в теле объект, который будет преобразован в JSON
@@ -45,17 +43,50 @@ public class AuthTest {
                 .statusCode(200); // код 200 OK
     }
 
+
     @Test
-    void shouldPass() {
-        setUpAll();
+    void wrongLogin() {
+        RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("en");
+        registrateUser(registrationData);
         open("http://localhost:9999");
-        $("[data-test-id=login] input").setValue(this.registrationData.getLogin());
-        $("[data-test-id=password] input").setValue(this.registrationData.getPassword());
+        $("[data-test-id=login] input").setValue("aabbcc");
+        $("[data-test-id=password] input").setValue(registrationData.getPassword());
         $("[data-test-id=action-login]").click();
-        if (Objects.equals(this.registrationData.getStatus(), "active")) {
-            $("h2").shouldHave(Condition.text("Личный кабинет"), Duration.ofSeconds(5));
-        } else {
-            $("[data-test-id=error-notification]").shouldHave(Condition.text("Пользователь заблокирован"), Duration.ofSeconds(5));
-        }
+        $("[data-test-id=error-notification]").shouldHave(Condition.text("Неверно указан"), Duration.ofSeconds(5));
+    }
+
+    @Test
+    void wrongPassword() {
+        RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("en");
+        registrateUser(registrationData);
+        open("http://localhost:9999");
+        $("[data-test-id=login] input").setValue(registrationData.getLogin());
+        $("[data-test-id=password] input").setValue("ля");
+        $("[data-test-id=action-login]").click();
+        $("[data-test-id=error-notification]").shouldHave(Condition.text("Неверно указан"), Duration.ofSeconds(5));
+    }
+
+    @Test
+    void userBlocked() {
+        RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("qwerty", "147852369", false);
+        registrateUser(registrationData);
+        open("http://localhost:9999");
+        $("[data-test-id=login] input").setValue(registrationData.getLogin());
+        $("[data-test-id=password] input").setValue(registrationData.getPassword());
+        $("[data-test-id=action-login]").click();
+        $("[data-test-id=error-notification]").shouldHave(Condition.text("заблокирован"), Duration.ofSeconds(5));
+    }
+
+    @Test
+    void changePassword() {
+        RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("en");
+        registrateUser(registrationData);
+        RegistrationData newRegistrationData = RegistrationInfo.Registration.generateInfo(registrationData.getLogin(), "147852369", true);
+        registrateUser(newRegistrationData);
+        open("http://localhost:9999");
+        $("[data-test-id=login] input").setValue(newRegistrationData.getLogin());
+        $("[data-test-id=password] input").setValue(newRegistrationData.getPassword());
+        $("[data-test-id=action-login]").click();
+        $("h2").shouldHave(Condition.text("Личный кабинет"), Duration.ofSeconds(10));
     }
 }
