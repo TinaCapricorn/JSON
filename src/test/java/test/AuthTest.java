@@ -18,30 +18,10 @@ import java.util.Objects;
 import static com.codeborne.selenide.Selectors.withText;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.open;
+import static data.RegistrationInfo.registrateUser;
 import static io.restassured.RestAssured.given;
 
 public class AuthTest {
-
-
-    private static RequestSpecification requestSpec = new RequestSpecBuilder()
-            .setBaseUri("http://localhost")
-            .setPort(9999)
-            .setAccept(ContentType.JSON)
-            .setContentType(ContentType.JSON)
-            .log(LogDetail.ALL)
-            .build();
-
-    private void registrateUser(RegistrationData registrationData) {
-        Gson gson = new Gson();
-        String jsonData = gson.toJson(registrationData);
-        given() // "дано"
-                .spec(requestSpec) // указываем, какую спецификацию используем
-                .body(jsonData) // передаём в теле объект, который будет преобразован в JSON
-                .when() // "когда"
-                .post("/api/system/users") // на какой путь, относительно BaseUri отправляем запрос
-                .then() // "тогда ожидаем"
-                .statusCode(200); // код 200 OK
-    }
 
 
     @Test
@@ -49,7 +29,8 @@ public class AuthTest {
         RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("en");
         registrateUser(registrationData);
         open("http://localhost:9999");
-        $("[data-test-id=login] input").setValue("aabbcc");
+        RegistrationData newRegistrationData = RegistrationInfo.Registration.generateInfo("en");
+        $("[data-test-id=login] input").setValue(newRegistrationData.getLogin());
         $("[data-test-id=password] input").setValue(registrationData.getPassword());
         $("[data-test-id=action-login]").click();
         $("[data-test-id=error-notification]").shouldHave(Condition.text("Неверно указан"), Duration.ofSeconds(5));
@@ -60,15 +41,16 @@ public class AuthTest {
         RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("en");
         registrateUser(registrationData);
         open("http://localhost:9999");
+        RegistrationData newRegistrationData = RegistrationInfo.Registration.generateInfo("en");
         $("[data-test-id=login] input").setValue(registrationData.getLogin());
-        $("[data-test-id=password] input").setValue("ля");
+        $("[data-test-id=password] input").setValue(newRegistrationData.getPassword());
         $("[data-test-id=action-login]").click();
         $("[data-test-id=error-notification]").shouldHave(Condition.text("Неверно указан"), Duration.ofSeconds(5));
     }
 
     @Test
     void userBlocked() {
-        RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("qwerty", "147852369", false);
+        RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("qwerty", "147852369", "blocked");
         registrateUser(registrationData);
         open("http://localhost:9999");
         $("[data-test-id=login] input").setValue(registrationData.getLogin());
@@ -81,11 +63,22 @@ public class AuthTest {
     void changePassword() {
         RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("en");
         registrateUser(registrationData);
-        RegistrationData newRegistrationData = RegistrationInfo.Registration.generateInfo(registrationData.getLogin(), "147852369", true);
+        RegistrationData newRegistrationData = RegistrationInfo.Registration.generateInfo(registrationData.getLogin(), "147852369", "active");
         registrateUser(newRegistrationData);
         open("http://localhost:9999");
         $("[data-test-id=login] input").setValue(newRegistrationData.getLogin());
         $("[data-test-id=password] input").setValue(newRegistrationData.getPassword());
+        $("[data-test-id=action-login]").click();
+        $("h2").shouldHave(Condition.text("Личный кабинет"), Duration.ofSeconds(10));
+    }
+
+    @Test
+    void shouldPass() {
+        RegistrationData registrationData = RegistrationInfo.Registration.generateInfo("en");
+        registrateUser(registrationData);
+        open("http://localhost:9999");
+        $("[data-test-id=login] input").setValue(registrationData.getLogin());
+        $("[data-test-id=password] input").setValue(registrationData.getPassword());
         $("[data-test-id=action-login]").click();
         $("h2").shouldHave(Condition.text("Личный кабинет"), Duration.ofSeconds(10));
     }
